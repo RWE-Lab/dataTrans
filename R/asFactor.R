@@ -5,6 +5,7 @@
 #' @import shiny
 #' @import miniUI
 #' @import shinyjqui
+#' @importFrom htmltools htmlEscape
 #' @import plotly
 #' @import tableone
 
@@ -66,13 +67,13 @@ asFactor <- function() {
   server <- function(input, output, session) {
 
     ## Page 1
-    data <- reactiveVal()
+    dataset <- reactiveVal()
     observeEvent(input$obj_name, {
       if (!nzchar(input$obj_name))
         showNotification("No dataset available.", duration = 10, type = "error")
       req(input$obj_name)
-      data(get(input$obj_name, envir = .GlobalEnv))
-      updateSelectInput(session, inputId = "var_name", choices = names(data()))
+      dataset(get(input$obj_name, envir = .GlobalEnv))
+      updateSelectInput(session, inputId = "var_name", choices = names(dataset()))
     })
 
     rvar <- reactiveVal()
@@ -83,7 +84,7 @@ asFactor <- function() {
     levs <- reactiveVal()
     output$table_1 <- renderUI({
       req(input$var_name)
-      var_temp <- data()[names(data()) == input$var_name]
+      var_temp <- dataset()[names(dataset()) == input$var_name]
       levs(sort(unique(var_temp[[input$var_name]]), na.last = NA) )# missing values in the data are removed
       ## Generate fields
       out <- "<table><tbody>"
@@ -134,7 +135,7 @@ asFactor <- function() {
     rvar <- reactiveVal()
     output$plot <- renderPlotly({
       # encode factor
-      data_1 <- subset(data(), select = input$var_name)
+      data_1 <- subset(dataset(), select = input$var_name)
       var_name <- input$var_name
       if (input$rename) {
         names(data_1)[1] <- input$var_rename

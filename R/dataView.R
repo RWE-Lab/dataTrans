@@ -4,7 +4,7 @@
 #' @return none
 #' @import shiny
 #' @import miniUI
-#' @importFrom DT DTOutput renderDT datatable dataTableProxy replaceData
+#' @importFrom DT DTOutput renderDT datatable dataTableProxy replaceData reloadData clearSearch selectColumns
 #' @import plotly
 
 dataView <- function() {
@@ -79,16 +79,16 @@ dataView <- function() {
 
     ## Page 1
 
-    data <- reactiveVal()
+    dataset <- reactiveVal()
     observeEvent(input$obj_name, {
       if (!nzchar(input$obj_name))
         showNotification("No dataset available.", duration = 10, type = "error")
       req(input$obj_name)
-      data(get(input$obj_name, envir = .GlobalEnv))
+      dataset(get(input$obj_name, envir = .GlobalEnv))
     })
 
     options(DT.TOJSON_ARGS = list(na = 'string'))
-    output$table_1 <- DT::renderDT(datatable(data(),
+    output$table_1 <- DT::renderDT(datatable(dataset(),
                                                     class = 'display compact nowrap',
                                                     filter = list(position = 'top', plain = TRUE,clear = FALSE),
                                                     extensions = c('Scroller','FixedColumns','Buttons'), # ColReorder
@@ -107,19 +107,19 @@ dataView <- function() {
 
     ## button select_all and reset
     proxy <- dataTableProxy('table_1')
-    observe({replaceData(proxy, data(), resetPaging = T, clearSelection = "all")})
+    observe({replaceData(proxy, dataset(), resetPaging = T, clearSelection = "all")})
 
     observeEvent(input$reset, {
-      data(get(input$obj_name, envir = .GlobalEnv)) # reload data
-      proxy %>% reloadData(resetPaging = T, clearSelection = "all") %>% clearSearch()
+      dataset(get(input$obj_name, envir = .GlobalEnv)) # reload data
+      proxy %>% reloadData(.data, resetPaging = T, clearSelection = "all") %>% clearSearch()
     })
 
     observeEvent(input$select_all, {
-      proxy %>% selectColumns(1:ncol(data()))
+      proxy %>% selectColumns(1:ncol(dataset()))
     })
 
     observeEvent(input$view, {
-      data(get(input$obj_name, envir = .GlobalEnv)) # reload data
+      dataset(get(input$obj_name, envir = .GlobalEnv)) # reload data
       s1 = input$table_1_columns_selected # indices of the selected columns
       s2 = input$table_1_rows_all # indices of rows on all pages (after the table is filtered by the search strings)
       if (is.null(s1))
@@ -127,8 +127,8 @@ dataView <- function() {
       # s3 = input$table_1_search # the global search string
       # s4 = input$table_1_search_columns # the vector of column search strings
       req(s1, s2)
-      new_data = subset(data()[s2,], select = names(data())[s1])
-      data(new_data) # update the value
+      new_data = subset(dataset()[s2,], select = names(dataset())[s1])
+      dataset(new_data) # update the value
     })
 
 
@@ -136,18 +136,18 @@ dataView <- function() {
     options(htmlwidgets.TOJSON_ARGS = NULL)
     observe({
       x <- input$obj_name
-      updateSelectInput(session,"var",label = "Choose a variable to plot", choices = names(data()))
+      updateSelectInput(session,"var",label = "Choose a variable to plot", choices = names(dataset()))
     })
 
     output$plot <- renderPlotly({
-      new_data <- data.frame(table(subset(data(), select = input$var)))
+      new_data <- data.frame(table(subset(dataset(), select = input$var)))
       plot_ly(data = new_data, x = ~Var1, y = ~Freq,type = "bar",color = I("lightblue")) %>%
         layout(yaxis = list(title = 'Count', showline = T,showgrid = T),
                xaxis = list(title = input$var, showline = T, showgrid = F))
     })
 
     output$summary <- renderPrint({
-      summary(data())
+      summary(dataset())
       # summary(CreateTableOne(data = data(),includeNA = T))
     })
 

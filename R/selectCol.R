@@ -46,23 +46,23 @@ selectCol <- function() {
   server <- function(input, output, session) {
 
     ## Page 1
-    data <- reactiveVal()
+    dataset <- reactiveVal()
     observeEvent(input$obj_name, {
       if (!nzchar(input$obj_name))
         showNotification("No dataset available.", duration = 10, type = "error")
       req(input$obj_name)
-      data(get(input$obj_name, envir = .GlobalEnv))
+      dataset(get(input$obj_name, envir = .GlobalEnv))
     })
 
     observe({
-      choices_list <- names(data())
+      choices_list <- names(dataset())
       updateCheckboxGroupInput(session, "var_choose", choices = choices_list, selected = choices_list)
       updateSelectInput(session, inputId = "var_name", choices = choices_list)
       updateTextInput(session, inputId = "var_rename", placeholder = input$var_name)
     })
 
     options(DT.TOJSON_ARGS = list(na = 'string'))
-    output$table_1 <- DT::renderDT(datatable(data(),
+    output$table_1 <- DT::renderDT(datatable(dataset(),
                                                  class = 'display compact nowrap',
                                                  filter = list(position = 'top', plain = TRUE,clear = FALSE),
                                                  extensions = c('Scroller','FixedColumns','Buttons'), # ColReorder
@@ -77,36 +77,36 @@ selectCol <- function() {
                                                  )))
 
     proxy_1 <- dataTableProxy('table_1')
-    observe({replaceData(proxy_1, data(), resetPaging = T, clearSelection = "all")})
+    observe({replaceData(proxy_1, dataset(), resetPaging = T, clearSelection = "all")})
 
 
     observeEvent(input$var_select_all,{
-      updateCheckboxGroupInput(session, "var_choose", selected = names(data()))
+      updateCheckboxGroupInput(session, "var_choose", selected = names(dataset()))
     })
 
     observeEvent(input$update,{
       if (length(input$var_choose) >= 1) {
         if (length(input$var_choose_order) == 0) {
-          new_data = data() %>% dplyr::select(input$var_choose)
+          new_data = dataset() %>% dplyr::select(input$var_choose)
         } else{
-          new_data = data() %>% dplyr::select(intersect(input$var_choose_order,input$var_choose))
+          new_data = dataset() %>% dplyr::select(intersect(input$var_choose_order,input$var_choose))
         }
-        data(new_data)
+        dataset(new_data)
       } else {
         showNotification("At least one column should be selected.", type = "error")
       }
     })
 
     observeEvent(input$var_reset,{
-      data(get(input$obj_name, envir = .GlobalEnv))
-      updateCheckboxGroupInput(session, "var_choose", choices = names(data()), selected = names(data()))
+      dataset(get(input$obj_name, envir = .GlobalEnv))
+      updateCheckboxGroupInput(session, "var_choose", choices = names(dataset()), selected = names(dataset()))
     })
 
     output$code <- renderText({
       header <- HTML(sprintf("<p class='header'style='color:green;'>## Select and reorder columns from <tt>%s</tt>.</p>",
                               req(input$obj_name)))
       out <- HTML(sprintf("%s <- dplyr::select(%s, ", req(input$obj_name), req(input$obj_name)))
-      col_names <- paste0(names(data()),collapse = ", ")
+      col_names <- paste0(names(dataset()),collapse = ", ")
       out <- paste0(out, col_names,")")
       codeout <- paste0(header,"<pre class='r'><code class='r' id='code'>",out,"</code></pre>")
       codeout
